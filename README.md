@@ -3,8 +3,11 @@
 A **PS Vita port** of [mstan's SuperMetroidRecomp](https://github.com/mstan/SuperMetroidRecomp).
 **All credit goes to the original authors** — see [CREDITS.md](CREDITS.md). All I did was port it.
 
-- Download: [downloads/SuperMetroid-Vita-r18.vpk](downloads/SuperMetroid-Vita-r18.vpk) (install with VitaShell).
-- You need your own ROM: `Super Metroid (Japan, USA) (En,Ja).sfc`, placed in `ux0:data/SuperMetroidRecomp/`.
+## Quick Start
+
+- **Download:** [downloads/SuperMetroid-Vita-r18.vpk](downloads/SuperMetroid-Vita-r18.vpk) (install with VitaShell).
+- **ROM:** You need your own legally-dumped `Super Metroid (Japan, USA) (En,Ja).sfc`, placed in `ux0:data/SuperMetroidRecomp/` on your Vita.
+- **Build from source:** See [SETUP.md](SETUP.md) for complete build instructions on Windows with WSL.
 - Vita controls/extras: Start skips the new-game intro; double-tap the left half of the touch screen toggles 16:9;
   double-tap the right half toggles infinite energy. Saves are written right after the game saves.
 - Non-commercial use only (PolyForm Noncommercial 1.0.0, see [LICENSE](LICENSE)).
