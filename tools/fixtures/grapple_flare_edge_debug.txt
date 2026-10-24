@@ -1,0 +1,13 @@
+# Diagnostic-only source/camera forcing: muzzle flare straddles native X=0.
+wait 3200
+poke 0998 0800
+poke 0a42 95e625e7
+poke 0a60 13e9
+poke 0a88 0000
+poke 09a2 37f337f3
+poke 09c2 bc02bc02640064001400140014001400
+poke 09d2 0400
+wait 100
+forcepoke 0911 1403
+forcepoke 0af6 2403
+press x 400

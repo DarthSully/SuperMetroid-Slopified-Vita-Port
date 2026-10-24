@@ -1,0 +1,166 @@
+# Manual release of the precompiled game. ROMs never enter CI or packages.
+# The maintainer generates once locally, places the generated archive in private
+# build storage, and sets SM_GENERATED_CODE_URL to its short-lived signed URL.
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (must match VERSION)'
+        type: string
+        required: true
+      generated_sha256:
+        description: 'SHA-256 of the private generated build archive'
+        type: string
+        required: true
+      publish_release:
+        description: 'Publish after all four native builds and tests pass'
+        type: boolean
+        default: false
+      toolchain_tag:
+        description: 'retcomm-toolchains builder version (empty = latest)'
+        type: string
+        default: ''
+concurrency:
+  group: supermetroid-release
+  cancel-in-progress: false
+permissions:
+  contents: read
+env:
+  EXE_NAME: SuperMetroidSNESRecomp
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Verify release version and dependency pins
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          INPUT_SHA256: ${{ inputs.generated_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$INPUT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$RELEASE_VERSION" == "$(tr -d '[:space:]' < VERSION)" ]]
+          bash snesrecomp/tools/ci/record_pins.sh --check framework_pins.txt
+          if git rev-parse -q --verify "refs/tags/v$RELEASE_VERSION" >/dev/null; then
+            echo "::error::Release tag already exists"
+            exit 1
+          fi
+  build:
+    needs: preflight
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            artifact: linux-x64
+          - os: windows-2022
+            artifact: windows-x64
+          - os: macos-15
+            artifact: macos-arm64
+          - os: macos-15-intel
+            artifact: macos-x64
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Verify dependency pins
+        run: bash snesrecomp/tools/ci/record_pins.sh --check framework_pins.txt
+      - name: Restore private generated program
+        env:
+          INPUT_URL: ${{ secrets.SM_GENERATED_CODE_URL }}
+          INPUT_SHA256: ${{ inputs.generated_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ -n "$INPUT_URL" ]] || { echo "::error::Refresh SM_GENERATED_CODE_URL before starting this build"; exit 1; }
+          curl --fail --silent --show-error --location "$INPUT_URL" --output "$RUNNER_TEMP/sm-generated.tar.gz"
+          python3 tools/release_payload.py restore "$RUNNER_TEMP/sm-generated.tar.gz" --sha256 "$INPUT_SHA256"
+          rm "$RUNNER_TEMP/sm-generated.tar.gz"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/toolchain-pack
+          key: cmake-clang-v1-${{ matrix.artifact }}-${{ inputs.toolchain_tag || 'latest' }}
+      - name: Fetch build tools
+        env:
+          TOOLCHAIN_TAG: ${{ inputs.toolchain_tag }}
+        run: |
+          ARGS=(--artifact "${{ matrix.artifact }}")
+          [[ -z "$TOOLCHAIN_TAG" ]] || ARGS+=(--tag "$TOOLCHAIN_TAG")
+          bash snesrecomp/tools/ci/fetch_toolchain.sh "${ARGS[@]}"
+      - uses: actions/cache@v4
+        if: runner.os == 'macOS'
+        with:
+          path: .cache/sdl3-src
+          key: sdl3-src-3.4.10
+      - name: Prefetch SDL3 source
+        if: runner.os == 'macOS'
+        run: bash snesrecomp/tools/ci/prefetch_sdl3.sh --out-dir .cache/sdl3-src
+      - name: Compile and test the complete native game
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          SDL_AUDIODRIVER: dummy
+          SDL_AUDIO_DRIVER: dummy
+        run: |
+          set -euo pipefail
+          source "${TOOLCHAIN_DIR}/env.sh"
+          EXTRA=()
+          [[ -z "${SNESRECOMP_SDL3_SOURCE_DIR:-}" ]] || EXTRA+=("-DSNESRECOMP_SDL3_SOURCE_DIR=${SNESRECOMP_SDL3_SOURCE_DIR}")
+          [[ "${{ runner.os }}" != macOS ]] || EXTRA+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0")
+          cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DSNESRECOMP_SETUP_HOST=OFF -DSNESRECOMP_ENABLE_TRACE=OFF \
+            -DSNESRECOMP_BUILD_VERSION="$RELEASE_VERSION" \
+            '-DCMAKE_BUILD_RPATH=$ORIGIN' "${EXTRA[@]}"
+          cmake --build build-ci --parallel 4
+          ctest --test-dir build-ci --output-on-failure
+      - name: Package runtime only
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          source "${TOOLCHAIN_DIR}/env.sh"
+          bash scripts/package_release.sh build-ci "${{ matrix.artifact }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supermetroid-${{ matrix.artifact }}
+          path: dist/supermetroid-*.zip
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+  release:
+    needs: [preflight, build]
+    if: inputs.publish_release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Verify and collect runtime packages
+        run: |
+          set -euo pipefail
+          mkdir dist
+          find artifacts -type f -name 'supermetroid-*.zip' -exec cp {} dist/ \;
+          [[ "$(find dist -name '*.zip' | wc -l)" -eq 4 ]]
+          for archive in dist/*.zip; do python3 tools/release_payload.py audit "$archive"; done
+          (cd dist && sha256sum *.zip > SHA256SUMS)
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Super Metroid v${{ inputs.version }} - precompiled runtime
+          body_path: docs/releases/v${{ inputs.version }}.md
+          files: |
+            dist/supermetroid-*.zip
+            dist/SHA256SUMS
+          fail_on_unmatched_files: true
+          make_latest: true

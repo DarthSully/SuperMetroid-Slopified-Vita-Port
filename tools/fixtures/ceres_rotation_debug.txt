@@ -1,0 +1,72 @@
+# Diagnostic: normal new-game input to Ceres, then escape-flag/position
+# setup only. Rotation is produced by the guest room code, not forced matrices.
+wait 210
+press start 8
+wait 120
+press start 8
+wait 360
+press start 12
+wait 240
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+press a 8
+wait 300
+poke 0afa 0002
+poke 093f 0080
+press x 400

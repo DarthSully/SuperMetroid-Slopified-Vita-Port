@@ -1,0 +1,7 @@
+shaders = "1"
+shader0 = ".src/crt.glsl"
+filter_linear0 = "false"
+parameters = "CRT_SCANLINE_STRENGTH;CRT_MASK_STRENGTH;CRT_VIGNETTE_STRENGTH"
+CRT_SCANLINE_STRENGTH = "0.60"
+CRT_MASK_STRENGTH = "0.40"
+CRT_VIGNETTE_STRENGTH = "0.55"

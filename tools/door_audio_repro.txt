@@ -1,0 +1,8 @@
+# Load only AFTER the first guest reset has executed. Loading at frame zero
+# appears to succeed but reset immediately erases the saved gameplay state.
+wait 180
+loadstate 0
+# Let save restoration and the audio queue settle before measuring the door.
+wait 480
+press left 180
+wait 300

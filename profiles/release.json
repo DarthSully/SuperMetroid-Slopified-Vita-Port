@@ -1,0 +1,7 @@
+{
+  "schema": "supermetroid release profile v1",
+  "id": "sm-ju-precompiled-0.3.12",
+  "rom_sha256": "12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72",
+  "cfg_roots": true,
+  "historical_profiles": []
+}

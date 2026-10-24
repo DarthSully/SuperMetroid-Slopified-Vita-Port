@@ -1,0 +1,12 @@
+# Diagnostic demo takeover/equipment grants, not a clean playthrough.
+# Select X-ray, then hold the configured run button to activate normally.
+wait 3200
+poke 0998 0800
+poke 0a42 95e625e7
+poke 0a60 13e9
+poke 0a88 0000
+poke 09a2 37f337f3
+poke 09c2 bc02bc02640064001400140014001400
+poke 09d2 0500
+wait 100
+press b 400

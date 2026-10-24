@@ -1,0 +1,18 @@
+# Diagnostic only: take over the landing-site demo with the normal Samus
+# handlers, grant equipment, then morph/fire through controller input.
+# These setup pokes are NOT renderer code or clean-playthrough evidence.
+wait 3200
+poke 0998 0800
+poke 0a42 95e625e7
+poke 0a60 13e9
+poke 0a88 0000
+poke 09a2 37f337f3
+poke 09c2 bc02bc02640064001400140014001400
+poke 09d2 0300
+wait 20
+press down 8
+wait 8
+press down 8
+wait 8
+press x 8
+wait 400

@@ -1,0 +1,6 @@
+shaders = "1"
+shader0 = ".src/scanlines.glsl"
+filter_linear0 = "false"
+parameters = "SCANLINE_STRENGTH;SCANLINE_WIDTH"
+SCANLINE_STRENGTH = "0.85"
+SCANLINE_WIDTH = "2.0"
