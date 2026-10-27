@@ -5,9 +5,11 @@ A **PS Vita port** of [mstan's SuperMetroidRecomp](https://github.com/mstan/Supe
 
 ## Quick Start
 
-- **Download:** [downloads/SuperMetroid-Vita-r18.vpk](downloads/SuperMetroid-Vita-r18.vpk) (install with VitaShell).
+- **Download:** [downloads/SuperMetroid-Vita-r21.vpk](downloads/SuperMetroid-Vita-r21.vpk) (install with VitaShell).
+- **What's new:** much faster door transitions, full speed with current VitaSDK, no junk beside the
+  pause map in 16:9. See [CHANGELOG.md](CHANGELOG.md) for all changes and known issues.
 - **ROM:** You need your own legally-dumped `Super Metroid (Japan, USA) (En,Ja).sfc`, placed in `ux0:data/SuperMetroidRecomp/` on your Vita.
-- **Build from source:** See [SETUP.md](SETUP.md) for complete build instructions on Windows with WSL.
+- **Install and build:** see [SETUP.md](SETUP.md) (playing, controls, and building in Linux or WSL).
 - Vita controls/extras: Start skips the new-game intro; double-tap the left half of the touch screen toggles 16:9;
   double-tap the right half toggles infinite energy. Saves are written right after the game saves.
 - Non-commercial use only (PolyForm Noncommercial 1.0.0, see [LICENSE](LICENSE)).

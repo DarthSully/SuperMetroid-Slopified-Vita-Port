@@ -2271,6 +2271,29 @@ static bool SdlRenderer_Init(SDL_Window *window) {
    * chosen by driver name, vsync is set separately) and removed
    * SDL_RendererInfo entirely. snesrecomp_sdl_create_renderer() hides both. */
   bool want_software = g_config.output_method == kOutputMethod_SDLSoftware;
+#ifdef __vita__
+  /* Newer VitaSDK SDL2 builds also offer an OpenGL ES renderer through
+   * vitaGL and prefer it; it costs ~12 ms per present and seconds of shader
+   * compiling at start. Ask for SDL's native GXM renderer when the build has
+   * it and no renderer was chosen in config.ini. */
+  {
+    const char *hint = SDL_GetHint(SDL_HINT_RENDER_DRIVER);
+    const char *gxm = NULL;
+    int n = SDL_GetNumRenderDrivers();
+    for (int i = 0; i < n; ++i) {
+      SDL_RendererInfo info;
+      if (SDL_GetRenderDriverInfo(i, &info) != 0 || !info.name) continue;
+      host_report_breadcrumb("render driver %d: %s", i, info.name);
+      char lower[64];
+      size_t k = 0;
+      for (; info.name[k] && k + 1 < sizeof(lower); ++k)
+        lower[k] = (char)((info.name[k] >= 'A' && info.name[k] <= 'Z') ? info.name[k] + 32 : info.name[k]);
+      lower[k] = 0;
+      if (!gxm && strstr(lower, "gxm")) gxm = info.name;
+    }
+    if ((!hint || !*hint) && gxm) SDL_SetHint(SDL_HINT_RENDER_DRIVER, gxm);
+  }
+#endif
   SDL_Renderer *renderer = snesrecomp_sdl_create_renderer(
       g_window, want_software,
       /*vsync=*/VSyncInterval());
@@ -2278,6 +2301,12 @@ static bool SdlRenderer_Init(SDL_Window *window) {
     printf("Failed to create renderer: %s\n", SDL_GetError());
     return false;
   }
+#ifdef __vita__
+  {
+    const char *name = snesrecomp_sdl_renderer_name(renderer);
+    host_report_breadcrumb("render driver in use: %s", name ? name : "(unknown)");
+  }
+#endif
   if (kDebugFlag || HostGetenv("HOST_PROFILE") || HostGetenv("FRAME_TIMING")) {
     const char *name = snesrecomp_sdl_renderer_name(renderer);
     printf("Renderer: %s (vsync=%d display_hz=%.3f simulation_hz=%.6f)\n",

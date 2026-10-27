@@ -189,12 +189,19 @@ static int SmDrawFrame(uint8_t *dst, size_t pitch, const uint8_t *field,
                        int frame_w, int frame_h, double alpha) {
   if (!SmCustomRendererEnabled())
     return 0;
-#ifdef __vita__
+#if defined(__vita__) || !defined(_WIN32)
   /* Pipelined: show the frame the compose thread finished, then hand it the
    * one just captured, so drawing overlaps the next guest frame (one frame
    * of display latency). Direct draws cover the start, size changes and a
-   * failed draw. */
-  if (alpha >= 1) {
+   * failed draw. Desktop: only with SM_PIPELINE=1, to reproduce the Vita. */
+#ifdef __vita__
+  const bool pipelined = true;
+#else
+  static int s_pipe = -1;
+  if (s_pipe < 0) { const char *e = getenv("SM_PIPELINE"); s_pipe = e && atoi(e) != 0; }
+  const bool pipelined = s_pipe != 0;
+#endif
+  if (pipelined && alpha >= 1) {
     SM_WD_STAGE("waiting for the compose thread");
     static uint32_t s_out[2][SM_MAX_WIDTH * SM_HEIGHT];
     static int s_width[2], s_inflight = -1;

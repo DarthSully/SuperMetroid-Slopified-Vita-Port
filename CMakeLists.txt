@@ -24,7 +24,7 @@ if(VITA)
     set(SM_VITA_TITLEID  "SMRC00001")
     # Build tag (rNN): the VPK name, the LiveArea app version (01.NN) and the
     # first line of log.txt. Bump it for every build handed out.
-    set(SM_VITA_BUILD "r18")
+    set(SM_VITA_BUILD "r21")
     string(REGEX REPLACE "^r0*" "" _sm_vita_n "${SM_VITA_BUILD}")
     if(_sm_vita_n STREQUAL "")
         set(_sm_vita_n 0)
@@ -281,11 +281,15 @@ elseif(VITA)
     endif()
     target_link_libraries(SuperMetroidSNESRecomp PRIVATE
         ${_sm_vita_sdl}
+        # Newer VitaSDK SDL2 renders through vitaGL, which is C++ and compiles
+        # shaders at run time. SDL2's own list puts these after everything
+        # below, past stdc++, so name them here in dependency order.
+        vitaGL vitashark SceShaccCgExt taihen_stub mathneon SceShaccCg_stub
         SceDisplay_stub SceCtrl_stub SceAudio_stub SceAudioIn_stub
         SceSysmodule_stub SceGxm_stub SceCommonDialog_stub SceAppMgr_stub
         SceTouch_stub SceHid_stub SceMotion_stub SceIme_stub ScePower_stub
         SceKernelDmacMgr_stub SceAppUtil_stub SceLibKernel_stub
-        pthread m)
+        stdc++ pthread m)
     target_compile_definitions(SuperMetroidSNESRecomp PRIVATE
         SNESRECOMP_SDL3=0
         SDL_MAIN_HANDLED

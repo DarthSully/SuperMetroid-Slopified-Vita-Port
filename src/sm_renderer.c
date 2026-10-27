@@ -159,8 +159,11 @@ bool SmRendererLoadCapture(const char *path) {
 static unsigned read16(const uint8_t *ram, unsigned address) {
   return ram[address] | (ram[address + 1] << 8);
 }
+/* $10/$11 (unpausing) still show the pause map, fading out, before the room
+ * is reloaded: drawing room tiles into the margins then put junk beside the
+ * map. Gameplay resumes being drawn at $12 (unpausing, brightening). */
 static bool room_state(unsigned state) {
-  return (state >= 7 && state <= 13) || (state >= 16 && state <= 25) ||
+  return (state >= 7 && state <= 13) || (state >= 18 && state <= 25) ||
          state == 27 || (state >= 32 && state <= 38) || state == 42;
 }
 bool SmRendererPowerBombWidths(const uint8_t profile[160], unsigned radius,
@@ -387,9 +390,57 @@ bool SmRendererDrawAsyncWait(void) {
   }
   return __atomic_load_n(&s_async_result, __ATOMIC_SEQ_CST);
 }
+#elif !defined(_WIN32)
+/* Desktop copy of the Vita's pipelined compose thread (SM_PIPELINE=1 in
+ * main.c), so its timing can be reproduced and screenshotted on a PC. */
+#include <pthread.h>
+#include <semaphore.h>
+static bool draw_frame_slot(unsigned frame_slot, uint32_t *out, SmViewport viewport,
+                            bool hud_anchored, double alpha);
+static sem_t s_async_job_sema, s_async_done_sema;
+static bool s_async_started, s_async_inflight, s_async_result;
+static struct { unsigned slot; uint32_t *out; SmViewport viewport; bool hud; double alpha; } s_async_job;
+static void *async_compose_main(void *arg) {
+  (void)arg;
+  for (;;) {
+    sem_wait(&s_async_job_sema);
+    __atomic_thread_fence(__ATOMIC_SEQ_CST);
+    bool ok = draw_frame_slot(s_async_job.slot, s_async_job.out, s_async_job.viewport,
+                              s_async_job.hud, s_async_job.alpha);
+    __atomic_store_n(&s_async_result, ok, __ATOMIC_SEQ_CST);
+    sem_post(&s_async_done_sema);
+  }
+  return NULL;
+}
+bool SmRendererDrawAsyncWait(void) {
+  if (!s_async_started) return false;
+  if (s_async_inflight) {
+    sem_wait(&s_async_done_sema);
+    __atomic_thread_fence(__ATOMIC_SEQ_CST);
+    s_async_inflight = false;
+  }
+  return __atomic_load_n(&s_async_result, __ATOMIC_SEQ_CST);
+}
+bool SmRendererDrawAsyncStart(uint32_t *out, SmViewport viewport, bool hud_anchored, double alpha) {
+  if (!s_async_started) {
+    pthread_t th;
+    s_async_started = sem_init(&s_async_job_sema, 0, 0) == 0 &&
+                      sem_init(&s_async_done_sema, 0, 0) == 0 &&
+                      pthread_create(&th, NULL, async_compose_main, NULL) == 0;
+    fprintf(stderr, "[host] pipelined widescreen drawing: %s\n", s_async_started ? "on" : "unavailable");
+    if (!s_async_started) return false;
+  }
+  SmRendererDrawAsyncWait();
+  s_async_job.slot = current; s_async_job.out = out; s_async_job.viewport = viewport;
+  s_async_job.hud = hud_anchored; s_async_job.alpha = alpha;
+  s_async_inflight = true;
+  __atomic_thread_fence(__ATOMIC_SEQ_CST);
+  sem_post(&s_async_job_sema);
+  return true;
+}
 #endif
 void SmRendererReset(void) {
-#ifdef __vita__
+#if defined(__vita__) || !defined(_WIN32)
   SmRendererDrawAsyncWait();   /* never clear frames under an in-flight draw */
 #endif
   memset(frames, 0, sizeof(frames));
